@@ -1,0 +1,31 @@
+.{
+    .name = .graphviz,
+    .version = "0.1.0",
+    .minimum_zig_version = "0.16.0",
+    .fingerprint = 0x5480083b83df9168,
+
+    // No `upstream` dependency yet, deliberately.
+    //
+    // The graphviz release tarball is the only source shipping the
+    // pre-generated bison/flex/python outputs this build consumes, but zig's
+    // package fetcher rejects it:
+    //
+    //   error: unable to unpack tarball
+    //       note: file 'redhat/graphviz.spec.rhel.in' has unsupported type '1'
+    //
+    // std.tar refuses hard links, and `make dist` emitted one for a duplicated
+    // RPM spec template. There is therefore no valid hash to pin. Until that is
+    // resolved, build with -Dupstream-path=<extracted release tree>.
+    //
+    // To pin it once resolved:
+    //   zig fetch --save=upstream <tarball-url>
+    // then set `has_pinned_upstream = true` in build.zig.
+    .dependencies = .{},
+
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+        "examples",
+    },
+}
