@@ -73,3 +73,11 @@ zig build run-example -Dupstream-path=graphviz-14.0.0 -- plain   # coordinates
 * No bitmap output. No HTML-like labels (needs expat). `dot` layout only.
 * `plugin/core` builds whole. Its symbol table references every renderer, so
   none can be dropped. The extras are dependency free.
+
+## Licensing
+
+This repository is MIT. It contains no graphviz source and ships no graphviz
+binaries, you supply the extracted release tree yourself. Builds link
+[graphviz](https://graphviz.org) 14.0.0 statically, which is
+[EPL-1.0](https://www.eclipse.org/legal/epl-v10.html). See `COPYING` in the
+release tarball and the [upstream notice](https://graphviz.org/license/).
