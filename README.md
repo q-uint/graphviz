@@ -21,10 +21,12 @@ note: file 'redhat/graphviz.spec.rhel.in' has unsupported type '1'
 the pre-generated parsers (`grammar.c`, `scan.c`, `htmlparse.c`), so a git
 checkout would need bison, flex and python3.
 
-Build against an extracted release tree instead:
+Build against an extracted release tree instead. `nix develop` fetches one and
+sets `GRAPHVIZ_SRC`, which is the default for `-Dupstream-path`, so `zig build`
+needs no flags. Without nix:
 
 ```sh
-curl -LO https://gitlab.com/api/v4/projects/4207231/packages/generic/graphviz-releases/14.0.0/graphviz-14.0.0.tar.xz
+curl -LO https://gitlab.com/api/v4/projects/graphviz%2Fgraphviz/packages/generic/graphviz-releases/14.0.0/graphviz-14.0.0.tar.xz
 tar xf graphviz-14.0.0.tar.xz
 zig build -Dupstream-path=graphviz-14.0.0
 ```
@@ -51,8 +53,8 @@ Raw declarations stay reachable as `gv.c` with the implementation linked in.
 `@import("headers")` gives the declarations without it.
 
 ```sh
-zig build run-example -Dupstream-path=graphviz-14.0.0            # SVG
-zig build run-example -Dupstream-path=graphviz-14.0.0 -- plain   # coordinates
+zig build run-example            # SVG
+zig build run-example -- plain   # coordinates
 ```
 
 ## Design

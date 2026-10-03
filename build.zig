@@ -1,6 +1,8 @@
 const std = @import("std");
+const Translator = @import("translate_c").Translator;
 
 /// Must match whatever upstream tree this builds against.
+/// flake.nix parses this line to pick the tarball it fetches.
 const graphviz_version = "14.0.0";
 
 /// Whether build.zig.zon declares an `upstream` dependency.
@@ -35,7 +37,7 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(example);
 
     const run_example = b.addRunArtifact(example);
-    if (b.args) |args| run_example.addArgs(args);
+    run_example.addPassthruArgs();
     b.step("run-example", "Render the FSM example to stdout").dependOn(&run_example.step);
 }
 
@@ -74,11 +76,7 @@ pub fn buildGraphviz(
     target: std.Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,
 ) ?Graphviz {
-    const upstream: Upstream = if (b.option(
-        []const u8,
-        "upstream-path",
-        "Path to an extracted graphviz release source tree",
-    )) |dir| .{ .dir = dir } else blk: {
+    const upstream: Upstream = if (upstreamPath(b)) |dir| .{ .dir = dir } else blk: {
         if (!has_pinned_upstream) {
             std.log.err(
                 \\no graphviz sources available.
@@ -87,9 +85,10 @@ pub fn buildGraphviz(
                 \\fetcher rejects archives containing hard links, and graphviz's
                 \\release tarball contains one (redhat/graphviz.spec.rhel.in).
                 \\
-                \\For now, extract a release tarball and point at it:
+                \\`nix develop` sets GRAPHVIZ_SRC to an extracted release tree.
+                \\Without nix, extract one and point at it:
                 \\
-                \\  curl -LO https://gitlab.com/api/v4/projects/4207231/packages/generic/graphviz-releases/{s}/graphviz-{s}.tar.xz
+                \\  curl -LO https://gitlab.com/api/v4/projects/graphviz%2Fgraphviz/packages/generic/graphviz-releases/{s}/graphviz-{s}.tar.xz
                 \\  tar xf graphviz-{s}.tar.xz
                 \\  zig build -Dupstream-path=graphviz-{s}
                 \\
@@ -143,15 +142,17 @@ pub fn buildGraphviz(
     // CMake only escapes that cycle by linking common as an OBJECT library
     // *into* gvc. Module imports form a DAG, so the cycle has to live inside a
     // single unit.
-    const headers = b.addTranslateC(.{
-        .root_source_file = b.path("src/graphviz.h"),
+    const headers: Translator = .init(b.dependency("translate_c", .{}), .{
+        .name = "graphviz",
+        .c_source_file = b.path("src/graphviz.h"),
         .target = target,
         .optimize = optimize,
     });
     addIncludePaths(headers, b, upstream);
     headers.addConfigHeader(config);
 
-    const c_mod = headers.addModule("c");
+    const c_mod = headers.mod;
+    b.modules.putNoClobber(b.graph.arena, "c", c_mod) catch @panic("OOM");
 
     const mod = b.addModule("graphviz", .{
         .root_source_file = b.path("src/root.zig"),
@@ -208,7 +209,21 @@ pub fn buildGraphviz(
     return .{ .mod = mod, .headers = c_mod, .lib = lib, .dynlib = dynlib };
 }
 
-fn addIncludePaths(tc: *std.Build.Step.TranslateC, b: *std.Build, upstream: Upstream) void {
+/// `-Dupstream-path`, else `GRAPHVIZ_SRC`, which the nix dev shell sets.
+fn upstreamPath(b: *std.Build) ?[]const u8 {
+    if (b.option(
+        []const u8,
+        "upstream-path",
+        "Path to an extracted graphviz release source tree (default: $GRAPHVIZ_SRC)",
+    )) |dir| return dir;
+
+    const dir = b.graph.environ_map.get("GRAPHVIZ_SRC") orelse return null;
+    // The cache system cannot track an environment variable.
+    b.graph.poisonCache();
+    return dir;
+}
+
+fn addIncludePaths(tc: Translator, b: *std.Build, upstream: Upstream) void {
     inline for (comptime includeDirs()) |dir| tc.addIncludePath(upstream.path(b, dir));
 }
 

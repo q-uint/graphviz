@@ -1,7 +1,7 @@
 .{
     .name = .graphviz,
     .version = "0.1.0",
-    .minimum_zig_version = "0.16.0",
+    .minimum_zig_version = "0.17.0",
     .fingerprint = 0x5480083b83df9168,
 
     // No `upstream` dependency yet, deliberately.
@@ -20,7 +20,12 @@
     // To pin it once resolved:
     //   zig fetch --save=upstream <tarball-url>
     // then set `has_pinned_upstream = true` in build.zig.
-    .dependencies = .{},
+    .dependencies = .{
+        .translate_c = .{
+            .url = "git+https://codeberg.org/ziglang/translate-c?ref=refs/tags/2.0.0#0da7a16c3235b935b82421646076e0657cda21f6",
+            .hash = "translate_c-2.0.0-Q_BUWltOBwA0229IE8wwSxxGzOxyRso3hvcb1nN8oJX_",
+        },
+    },
 
     .paths = .{
         "LICENSE",
