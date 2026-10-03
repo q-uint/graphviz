@@ -50,20 +50,20 @@ pub fn main(init: std.process.Init) !void {
     const graph = try gv.Graph.init("finite_state_machine", .directed);
     defer graph.deinit();
 
-    try graph.set("rankdir", "LR");
-    try graph.set("fontname", font);
-    try graph.setNodeDefault("fontname", font);
-    try graph.setEdgeDefault("fontname", font);
-    try graph.setNodeDefault("shape", "circle");
+    try graph.set(.{ .rankdir = .LR, .fontname = font });
+    try graph.nodeDefault(.{ .fontname = font, .shape = .circle });
+    try graph.edgeDefault(.{ .fontname = font });
 
     for (accepting) |name| {
-        const n = try graph.node(name);
-        try n.set("shape", "doublecircle");
+        _ = try graph.nodeWith(name, .{ .shape = .doublecircle });
     }
 
     for (transitions) |t| {
-        const e = try graph.edge(try graph.node(t.from), try graph.node(t.to));
-        try e.set("label", t.label);
+        _ = try graph.edgeWith(
+            try graph.node(t.from),
+            try graph.node(t.to),
+            .{ .label = t.label },
+        );
     }
 
     const out = try ctx.renderGraphAlloc(gpa, graph, .dot, format);

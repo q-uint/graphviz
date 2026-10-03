@@ -49,6 +49,45 @@ const svg = try ctx.renderGraphAlloc(allocator, graph, .dot, .svg);
 defer allocator.free(svg);
 ```
 
+Building a graph instead of parsing one. Attributes are struct literals, with
+the field name as the attribute name and the value formatted by its type:
+
+```zig
+const graph = try gv.Graph.init("fsm", .directed);
+defer graph.deinit();
+
+try graph.set(.{ .rankdir = .LR });
+try graph.nodeDefault(.{ .shape = .circle });
+
+const a = try graph.nodeWith("LR_0", .{ .shape = .doublecircle, .width = 0.08 });
+const b = try graph.nodeFmt("s{d}", .{1});
+_ = try graph.edgeWith(a, b, .{ .label = "SS(B)", .constraint = false });
+try b.setFmt("label", "{d}/{d}", .{ 1, 2 });
+```
+
+Enums and enum literals become their tag name, numbers and bools are printed,
+and strings are used as they are. Anything else with a `format` method is
+rendered with `{f}`, which is how `gv.escape` fits in:
+
+```zig
+try b.set(.{ .label = gv.escape("C:\\path") });
+try b.setFmt("label", "{f}/{f}", .{ gv.escape(x), gv.escape(y) });
+```
+
+Subgraphs box nodes and pin ranks:
+
+```zig
+const box = try graph.cluster("chain");   // named cluster_chain, so dot draws a box
+_ = try box.node("a");
+
+const row = try graph.subgraph("same_0");
+try row.set(.{ .rank = .same });
+```
+
+Formatted values go through a `gv.max_inline_bytes` stack buffer and return
+`NameTooLong` or `ValueTooLong` rather than truncating. Strings that arrive
+NUL terminated bypass it, so a long label is a `[:0]u8` you build yourself.
+
 Raw declarations stay reachable as `gv.c` with the implementation linked in.
 `@import("headers")` gives the declarations without it.
 
